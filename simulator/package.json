@@ -1,0 +1,19 @@
+{
+  "name": "sentinelai-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Telemetry generator that drives SentinelAI's ingestion and detection pipeline.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "sentinel-sim": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "demo": "node src/cli.js --scenario chaos --loop",
+    "check": "node --check src/cli.js && node --check src/api-client.js && node --check src/scenarios.js && node --check src/runner.js && node --check src/args.js"
+  },
+  "dependencies": {}
+}

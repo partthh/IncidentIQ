@@ -1,0 +1,31 @@
+
+target/
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
+*.log
+# Node.js dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+target/
+
+# TypeScript generated files
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and local files
+*.log
+.DS_Store
+Thumbs.db

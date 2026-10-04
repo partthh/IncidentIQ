@@ -1,0 +1,80 @@
+# SentinelAI — full stack: PostgreSQL, backend, dashboard.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:5173 and sign in as priya@sentinel.dev / sentinel123.
+#
+# Two decisions worth stating, because both are visible in this file rather than
+# hidden in the application config:
+#
+#  1. The dashboard is served by nginx, which proxies /api and /ws to the backend. The
+#     browser therefore only ever talks to one origin. That is not tidiness: a browser
+#     cannot set an Authorization header on a WebSocket upgrade, so the STOMP CONNECT
+#     frame carries the token and the upgrade has to reach the backend from the origin
+#     the app was served from.
+#
+#  2. The backend waits for PostgreSQL to be *healthy*, not merely started. Flyway
+#     migrates on boot and Hibernate validates the schema immediately afterwards;
+#     starting against a database that is still accepting connections produces a
+#     failure that looks like a code bug and is not.
+
+name: sentinelai
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready reports "accepting connections", which is the condition Flyway
+      # actually needs. A TCP probe would pass while the server is still recovering.
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SENTINEL_DB_URL: jdbc:postgresql://postgres:5432/sentinel
+      SENTINEL_DB_USER: sentinel
+      SENTINEL_DB_PASSWORD: sentinel
+      SENTINEL_PORT: "8080"
+      # A real deployment sets this to a generated secret. The default in
+      # application.yml is deliberately obvious so a local run works, and it is
+      # overridden here to make the "this is not a default" property explicit.
+      SENTINEL_JWT_SECRET: ${SENTINEL_JWT_SECRET:-compose-local-secret-change-me-0123456789abcdef0123456789abcdef}
+      # The offline stub: deterministic, no API key, no network. Swap in
+      # SENTINEL_LLM_PROVIDER=openai plus a key to use a real model.
+      SENTINEL_LLM_PROVIDER: ${SENTINEL_LLM_PROVIDER:-stub}
+      SENTINEL_LLM_MODEL: ${SENTINEL_LLM_MODEL:-sentinel-stub-v1}
+      SENTINEL_LLM_API_KEY: ${SENTINEL_LLM_API_KEY:-}
+      SENTINEL_SEED_PASSWORD: ${SENTINEL_SEED_PASSWORD:-sentinel123}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      # service_started, not service_healthy: the dashboard is useful before the
+      # backend answers, and it should show its own connection indicator rather than
+      # refusing to start.
+      backend:
+        condition: service_started
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres-data:

@@ -8,6 +8,10 @@
     {
       "source": "/actuator/:path*",
       "destination": "https://incidentiq-9zhg.onrender.com/actuator/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

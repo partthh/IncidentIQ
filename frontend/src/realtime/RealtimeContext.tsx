@@ -105,7 +105,7 @@ export function RealtimeProvider({
     const client = new Client({
       // Same-origin path: vite proxies /ws to the backend in dev, and in Docker the
       // frontend server proxies it too. The token is not in this URL.
-      brokerURL: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`,
+      brokerURL: `${import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`}/ws`,
       connectHeaders: { Authorization: `Bearer ${token}` },
       // Reconnection is on, with a ceiling. A restarted backend must not become a
       // reconnect storm; a long outage must not become a permanently dead dashboard.

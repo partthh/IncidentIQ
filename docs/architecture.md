@@ -258,6 +258,30 @@ infrastructure to run, and the interfaces chosen (publish to a destination, send
 user) are the ones a relay-backed broker would satisfy. Swapping in RabbitMQ later
 changes configuration rather than code.
 
+### Split origins in production: the upgrade cannot be proxied everywhere
+
+Dev and Docker keep one origin — vite and nginx both forward `/ws`, so the browser
+never sees two hosts. A static host cannot do that. Vercel's rewrites forward HTTP
+requests to the backend, but they do not carry the WebSocket `Upgrade`; a `/ws`
+rewrite there is answered with the SPA's `index.html` and the handshake dies on a
+non-`101` response. That is the error this design produces on such a deploy, and it
+is a routing failure, not an authentication one.
+
+So the two channels split:
+
+- **REST stays same-origin**, proxied by the rewrites in `vercel.json`.
+- **The socket goes straight to the backend.** `VITE_WS_URL` is set in the host's
+  build environment (Vite bakes it in at build time), and the client derives `wss://`
+  from whatever scheme it is given so a deployer may paste the origin they already
+  have.
+
+A cross-origin handshake needs exactly one thing from the backend: the page's origin
+in `SENTINEL_SECURITY_ALLOWED_ORIGINS` (comma-separated, no trailing slash). Spring
+Security's CORS filter runs over the handshake like any other request, so an origin
+missing from that list is a `403` on the upgrade — which reads like a token failure
+and is not one. `WebSocketConfig` still permits every origin at the protocol level;
+the allow-list above it is the real boundary.
+
 ---
 
 ## 6. AI investigation

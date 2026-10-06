@@ -48,6 +48,12 @@ sentinel:
     jwt-secret: ${SENTINEL_JWT_SECRET:dev-only-secret-change-me-0123456789abcdef0123456789abcdef}
     access-token-ttl: 12h
     issuer: sentinel-ai
+    # Origins allowed to call the API and to open the WebSocket handshake from a
+    # browser. Written as an explicit placeholder rather than left to relaxed
+    # binding because the intuitive env var name, SENTINEL_SECURITY_ALLOWED_ORIGINS,
+    # does not bind to a dashed property name — Spring's documented mapping strips
+    # the dash instead. Naming it here makes the variable on Render unambiguous.
+    allowed-origins: ${SENTINEL_SECURITY_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   ingestion:
     max-payload-bytes: 65536
     max-message-length: 4000

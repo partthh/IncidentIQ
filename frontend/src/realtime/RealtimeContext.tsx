@@ -65,6 +65,29 @@ const RealtimeContext = createContext<RealtimeState | null>(null)
 const FEED_DESTINATION = '/topic/incidents'
 export const incidentTopic = (incidentId: string) => `/topic/incidents/${incidentId}`
 
+/**
+ * The STOMP handshake target, ending in `/ws`. The token is not in it.
+ *
+ * Same-origin by default, which is what holds everywhere this repository ships:
+ * vite proxies `/ws` in dev and nginx proxies it in Docker. The exception is a
+ * static host that cannot forward an upgrade — Vercel's rewrites proxy HTTP but
+ * not the WebSocket `Upgrade`, so a `/ws` rewrite there just answers with the SPA
+ * shell. A deploy on such a host sets `VITE_WS_URL` to the backend's origin in its
+ * build environment and the browser opens the socket there directly. That
+ * cross-origin handshake needs nothing beyond the backend's origin allow-list
+ * (`SENTINEL_SECURITY_ALLOWED_ORIGINS`): the token travels in the STOMP CONNECT
+ * frame and the upgrade request carries no credentials of its own.
+ */
+function resolveBrokerURL(): string {
+  const origin =
+    import.meta.env.VITE_WS_URL ||
+    `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
+  // `https://host` is not a WebSocket URL: accept the origin a deployer already has
+  // in hand rather than making them remember which scheme a socket needs, and drop
+  // a trailing slash so the path never comes out as `//ws`.
+  return `${origin.replace(/^http/, 'ws').replace(/\/+$/, '')}/ws`
+}
+
 export function RealtimeProvider({
   token,
   enabled,
@@ -103,9 +126,7 @@ export function RealtimeProvider({
     setLastEvent(null)
 
     const client = new Client({
-      // Same-origin path: vite proxies /ws to the backend in dev, and in Docker the
-      // frontend server proxies it too. The token is not in this URL.
-      brokerURL: `${import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`}/ws`,
+      brokerURL: resolveBrokerURL(),
       connectHeaders: { Authorization: `Bearer ${token}` },
       // Reconnection is on, with a ceiling. A restarted backend must not become a
       // reconnect storm; a long outage must not become a permanently dead dashboard.

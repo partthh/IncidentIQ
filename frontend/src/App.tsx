@@ -78,7 +78,7 @@ function Gate() {
 
   if (status === 'unknown') {
     return (
-      <div className="login-wrap">
+      <div className="login-page">
         <div className="loading-row">
           <span className="spinner" />
           Restoring session…
